@@ -1,6 +1,8 @@
 import logging
 import os
 import httpx
+from threading import Thread
+from flask import Flask
 from aiogram import Bot, Dispatcher, types, executor
 from aiogram.types import ParseMode
 from dotenv import load_dotenv
@@ -59,5 +61,20 @@ async def ai_chat(message: types.Message):
             text=f"❌ Ошибка: {e}"
         )
 
+# --- Новая часть: Flask-сервер, который Render будет проверять ---
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Бот работает!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
 if __name__ == "__main__":
+    # Запускаем Flask в отдельном потоке
+    flask_thread = Thread(target=run_flask)
+    flask_thread.start()
+    # Запускаем Telegram-бота
     executor.start_polling(dp, skip_updates=True)
