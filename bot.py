@@ -9,15 +9,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHUTES_API_TOKEN = os.getenv("CHUTES_API_TOKEN")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 dp = Dispatcher(bot)
 
-API_URL = "https://llm.chutes.ai/v1/chat/completions"
-MODEL = "deepseek-ai/DeepSeek-V3-0324"
+# Настройки OpenRouter
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
+# Бесплатная модель DeepSeek: deepseek/deepseek-r1:free
+MODEL = "deepseek/deepseek-r1:free"
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
@@ -31,7 +33,9 @@ async def ai_chat(message: types.Message):
         return
 
     headers = {
-        "Authorization": f"Bearer {CHUTES_API_TOKEN}",
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "HTTP-Referer": "https://my-ai-bot-1-2kbq.onrender.com",  # адрес твоего сервиса
+        "X-Title": "My Telegram AI Bot",
         "Content-Type": "application/json"
     }
     payload = {
@@ -39,9 +43,8 @@ async def ai_chat(message: types.Message):
         "messages": [
             {"role": "user", "content": user_prompt}
         ],
-        "stream": False,
         "max_tokens": 1024,
-        "temperature": 1
+        "temperature": 0.7
     }
 
     thinking_msg = await message.reply("⌛ Думаю...")
@@ -61,7 +64,7 @@ async def ai_chat(message: types.Message):
             text=f"❌ Ошибка: {e}"
         )
 
-# --- Новая часть: Flask-сервер, который Render будет проверять ---
+# Flask-сервер
 app = Flask(__name__)
 
 @app.route('/')
@@ -73,8 +76,6 @@ def run_flask():
     app.run(host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
-    # Запускаем Flask в отдельном потоке
     flask_thread = Thread(target=run_flask)
     flask_thread.start()
-    # Запускаем Telegram-бота
     executor.start_polling(dp, skip_updates=True)
